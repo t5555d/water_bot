@@ -91,7 +91,7 @@ REPORT_TEMPLATE = """
 {%- macro print_counters(info) -%}
     {{ caller() }}:
     {%- for key, val in info|dictsort %}
-    - {{key}}: {{val["prev_value"]}} -> {{val["curr_value"]}}
+    - {{counters[key]}} ({{key}}): {{val["prev_value"]}} -> {{val["curr_value"]}} (Расход {{'{:.3f}'.format(val["curr_value"]|float - val["prev_value"]|float)}})
     {%- endfor -%}
 {%- endmacro -%}
 Отправлены показания счетчиков.
@@ -100,8 +100,18 @@ REPORT_TEMPLATE = """
 """
 
 async def report(session: Session, report_id, tomrc_info, tes_info):
+    counters = {
+        "25-057961": "ХВ, кухня",
+        "25-065086": "ХВ, санузел",
+        "25-010833": "ГВ, санузел",
+        "25-079292": "ГВ, кухня",
+    }
     template = jinja2.Template(REPORT_TEMPLATE)
-    report = template.render(tomrc_info=tomrc_info, tes_info=tes_info)
+    report = template.render(
+        tomrc_info=tomrc_info,
+        tes_info=tes_info,
+        counters=counters,
+    )
     async with session.dialog(report_id) as dialog:
         await dialog.send(report)
 
