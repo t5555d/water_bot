@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import asyncio
 import jinja2
 import logging
@@ -105,8 +106,8 @@ async def report(session: Session, report_id, tomrc_info, tes_info):
         await dialog.send(report)
 
 
-async def amain():
-    with open("config.yaml") as file:
+async def amain(params):
+    with open(params.config) as file:
         config = yaml.safe_load(file)
         account = Account(**config["account"])
         report_id = config.get("report_id")
@@ -123,5 +124,8 @@ async def amain():
 
 if __name__ == "__main__":
     logging.basicConfig(level="INFO")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config", required=True, help="path to config.yaml")
+    params = parser.parse_args()
 
-    asyncio.run(amain())
+    asyncio.run(amain(params))
