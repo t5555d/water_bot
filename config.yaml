@@ -1,0 +1,7 @@
+account:
+  id: My Account
+  api_id: 12345678
+  api_hash: abcdefghijklmnopqrstuvwxyz0123456789
+  phone: +1234567890
+  timezone: '+07:00'
+report_id: me
