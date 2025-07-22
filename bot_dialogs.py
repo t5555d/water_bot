@@ -76,6 +76,14 @@ class WaitResult:
     matches: tuple = None
     buttons: list[Button] = None
 
+    async def click(self, answer: str):
+        for button in self.buttons:
+            if button.matches(answer):
+                await button.click()
+                break
+        else:
+            raise RuntimeError(f"Expected answer '{answer}' was not suggested: {self.buttons}")
+
 
 class BotDialog:
     def __init__(self, session: Session, bot_name: str):
@@ -109,7 +117,7 @@ class BotDialog:
         logger.info("-> %s", message)
         await self.client.send_message(self.bot_id, message)
 
-    async def wait(self) -> WaitResult:
+    async def wait(self, expected_message: str = None, answer: str = None) -> WaitResult:
         next = await self.message_queue.get()
         result = WaitResult(
             message=next.message,
@@ -122,33 +130,19 @@ class BotDialog:
                 for btn in row.buttons
             ]
 
-        return result
-
-    async def expect(self, expected_message: str, answer: str = None) -> WaitResult:
-        return await self.expects({ expected_message : answer })
-
-    async def expects(self, expected_messages: dict[str,str]) -> WaitResult:
-        result = await self.wait()
-        for expected_message, answer in expected_messages.items():
-            if match := re.match(expected_message, result.message):
-                result.matches = match.groups()
-                break
-        else:
-            expected = '\n'.join(msg for msg in expected_messages)
-            raise RuntimeError(f"Got unexpected message '{message}', expected:\n{expected}")
+        if expected_message:
+            match = re.match(expected_message, result.message)
+            if not match:
+                raise RuntimeError(f"Expected message '{expected_message}', got: {next.message}")
+            result.matches = match.groups()
 
         if answer:
-            for button in result.buttons:
-                if button.matches(answer):
-                    await button.click()
-                    break
-            else:
-                raise RuntimeError(f"Expected answer '{answer}' was not suggested: {result.buttons}")
+            await result.click(answer)
 
         return result
 
     async def match(self, expected_message) -> tuple:
-        result = await self.expect(expected_message)
+        result = await self.wait(expected_message)
         return result.matches
 
     async def seek(self, answer, *fallback_options, max_iterations=10):

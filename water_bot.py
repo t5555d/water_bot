@@ -18,7 +18,7 @@ WATERIUS_VALUE_PATTERN = r"\(([-\d]+)\) — ([\.\d]+) м"
 async def get_values(session: Session):
     async with session.dialog("waterius_official_bot") as bot:
         await bot.send("/start")
-        await bot.expect(".*", answer=". Получить показания")
+        await bot.wait(answer=". Получить показания")
         result = await bot.wait()
         return dict(re.findall(WATERIUS_VALUE_PATTERN, result.message))
 
@@ -34,12 +34,12 @@ async def send_tomrc(session: Session, account_number, values):
     async with session.dialog("tomrc70_bot") as bot:
         await bot.send("/start")
         await bot.seek("Передать показания приборов учёта воды", "Главное меню", "В главное меню", "Пропустить")
-        await bot.expect("ВНИМАНИЕ ! Показания счетчиков следует передавать ежемесячно")
-        await bot.expect("Ваш лицевой счет")
+        await bot.wait("ВНИМАНИЕ ! Показания счетчиков следует передавать ежемесячно")
+        await bot.wait("Ваш лицевой счет")
         await bot.send(account_number)
-        await bot.expect("Ваш адрес Томская обл, Томск г, Соляной пер, д. 17, кв. 24?", answer="Да")
-        await bot.expect(r"Лицевой счет \S+ успешно найден")
-        await bot.expect("Оставьте, пожалуйста, контактный телефон", answer="Пропустить")
+        await bot.wait("Ваш адрес Томская обл, Томск г, Соляной пер, д. 17, кв. 24?", answer="Да")
+        await bot.wait(r"Лицевой счет \S+ успешно найден")
+        await bot.wait("Оставьте, пожалуйста, контактный телефон", answer="Пропустить")
         for i in range(len(values)):
             name, prev_value = await bot.match(r"Введите показания \d (.+), с предыдущими показаниями ([\d\.]+)")
             code = counters[name]
@@ -48,12 +48,16 @@ async def send_tomrc(session: Session, account_number, values):
                 "curr_value": values[code],
             }
             await bot.send(values[code])
-            result = await bot.expects({
-                r"Ваш расход составил ([\d\.]+)": None,
-                r"Предыдущие показания счетчика [\d\.]+ м³. Ваш расход составил ([\d\.]+) м³ Все верно?": "Да",
-            })
-            info[code]["usage"], = result.matches
-        await bot.expect("Показания сохранены")
+            result = await bot.wait()
+            if match := re.match(r"Предыдущие показания счетчика ([\d\.])+ м³. Ваш расход составил ([\d\.]+) м³ Все верно?", result.message):
+                await result.click("Да")
+                result = await bot.wait()
+
+            if match := re.match(r"Ваш расход составил ([\d\.]+)", result.message):
+                usage = match.group(1)
+            else:
+                raise RuntimeError(f"Unexpected message: '{result}'")
+        await bot.wait("Показания сохранены")
     return info
 
 
@@ -62,12 +66,12 @@ async def send_tes(session: Session, account_number, values):
     async with session.dialog("tes_telegram_bot") as bot:
         await bot.send("/start")
         await bot.seek("Передача показаний")
-        await bot.expect("Укажите полный лицевой счёт")
+        await bot.wait("Укажите полный лицевой счёт")
         await bot.send(account_number)
-        await bot.expect("Томск г., Соляной пер, 17, 24")
-        await bot.expect("Верна ли информация?", answer="Верно")
+        await bot.wait("Томск г., Соляной пер, 17, 24")
+        await bot.wait("Верна ли информация?", answer="Верно")
         while True:
-            msg = await bot.expect("Выберите услугу/счётчик")
+            msg = await bot.wait("Выберите услугу/счётчик")
             for button in msg.buttons:
                 match = button.matches(r"\s*ГВС / (\S+)")
                 if match and match.group(1) not in info:
@@ -75,10 +79,10 @@ async def send_tes(session: Session, account_number, values):
                     curr_value = values[code]
                     await button.click()
                     prev_value, = await bot.match(r"Предыдущие показания: (\S+)")
-                    await bot.expect("Введите актуальные показания:")
+                    await bot.wait("Введите актуальные показания:")
                     await bot.send(curr_value)
-                    await bot.expect(r"Дата снятия показаний (\S+) ?", answer="Да, использовать текущую дату")
-                    await bot.expect("Показания приняты, продолжить передачу показаний?", answer="Выбрать другой прибор")
+                    await bot.wait(r"Дата снятия показаний (\S+) ?", answer="Да, использовать текущую дату")
+                    await bot.wait("Показания приняты, продолжить передачу показаний?", answer="Выбрать другой прибор")
                     info[code] = {
                         "prev_value": prev_value,
                         "curr_value": curr_value,
