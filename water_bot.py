@@ -48,10 +48,11 @@ async def send_tomrc(session: Session, account_number, values):
                 "curr_value": values[code],
             }
             await bot.send(values[code])
-            info[code]["usage"], = await bot.expects({
+            result = await bot.expects({
                 r"Ваш расход составил ([\d\.]+)": None,
                 r"Предыдущие показания счетчика [\d\.]+ м³. Ваш расход составил ([\d\.]+) м³ Все верно?": "Да",
             })
+            info[code]["usage"], = result.matches
         await bot.expect("Показания сохранены")
     return info
 
