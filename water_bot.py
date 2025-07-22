@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import jinja2
 import logging
+import logging.config
 import re
 import yaml
 
