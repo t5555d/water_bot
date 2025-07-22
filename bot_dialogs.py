@@ -109,24 +109,33 @@ class BotDialog:
         logger.info("-> %s", message)
         await self.client.send_message(self.bot_id, message)
 
-    async def wait(self, expected_message=None, answer=None) -> WaitResult:
+    async def wait(self) -> WaitResult:
         next = await self.message_queue.get()
         result = WaitResult(
             message=next.message,
             buttons=[],
         )
-        if expected_message:
-            match = re.match(expected_message, next.message)
-            if not match:
-                raise RuntimeError(f"Expected message '{expected_message}', got: {next.message}")
-            result.matches = match.groups()
-
         if next.reply_markup:
             result.buttons = [
                 Button(next, btn.text)
                 for row in next.reply_markup.rows
                 for btn in row.buttons
             ]
+
+        return result
+
+    async def expect(self, expected_message: str, answer: str = None) -> WaitResult:
+        return await self.expects({ expected_message : answer })
+
+    async def expects(self, expected_messages: dict[str,str]) -> WaitResult:
+        result = await self.wait()
+        for expected_message, answer in expected_messages.items():
+            if match := re.match(expected_message, next.message):
+                result.matches = match.groups()
+                break
+        else:
+            expected = '\n'.join(msg for msg in expected_messages)
+            raise RuntimeError(f"Got unexpected message '{message}', expected:\n{expected}")
 
         if answer:
             for button in result.buttons:
@@ -139,7 +148,7 @@ class BotDialog:
         return result
 
     async def match(self, expected_message) -> tuple:
-        result = await self.wait(expected_message)
+        result = await self.expect(expected_message)
         return result.matches
 
     async def seek(self, answer, *fallback_options, max_iterations=10):
