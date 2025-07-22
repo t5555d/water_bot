@@ -18,7 +18,7 @@ WATERIUS_VALUE_PATTERN = r"\(([-\d]+)\) — ([\.\d]+) м"
 async def get_values(session: Session):
     async with session.dialog("waterius_official_bot") as bot:
         await bot.send("/start")
-        await bot.expect(answer=". Получить показания")
+        await bot.expect(".*", answer=". Получить показания")
         result = await bot.wait()
         return dict(re.findall(WATERIUS_VALUE_PATTERN, result.message))
 
