@@ -130,7 +130,7 @@ class BotDialog:
     async def expects(self, expected_messages: dict[str,str]) -> WaitResult:
         result = await self.wait()
         for expected_message, answer in expected_messages.items():
-            if match := re.match(expected_message, next.message):
+            if match := re.match(expected_message, result.message):
                 result.matches = match.groups()
                 break
         else:
