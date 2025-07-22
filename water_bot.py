@@ -47,7 +47,7 @@ async def send_tomrc(session: Session, account_number, values):
                 "curr_value": values[code],
             }
             await bot.send(values[code])
-            usage, = await bot.match(r"Ваш расход составил ([\d\.]+)")
+            usage, = await bot.match(r".*Ваш расход составил ([\d\.]+)")
             info[code]["usage"] = usage
         await bot.wait("Показания сохранены")
     return info
@@ -122,6 +122,12 @@ async def amain(params):
         account = Account(**config["account"])
         report_id = config.get("report_id")
 
+        if log_config := config.get("logging"):
+            logging.config.dictConfig(log_config)
+        else:
+            logging.basicConfig("INFO")
+
+
     async with Session(account) as session:
         values = await get_values(session)
         logger.info("Got values: %s", values)
@@ -133,7 +139,6 @@ async def amain(params):
             await report(session, report_id, tomrc_info, tes_info)
 
 if __name__ == "__main__":
-    logging.basicConfig(level="INFO")
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", required=True, help="path to config.yaml")
     params = parser.parse_args()

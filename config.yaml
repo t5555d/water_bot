@@ -5,3 +5,24 @@ account:
   phone: +1234567890
   timezone: '+07:00'
 report_id: me
+logging:
+  version: 1
+  formatters:
+    standard:
+      format: '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+  handlers:
+    stderr:
+      class: logging.StreamHandler
+      formatter: standard
+      level: DEBUG
+      stream: ext://sys.stderr
+  loggers:
+    telethon:
+      handlers: [stderr]
+      level: WARN
+    bot_dialogs:
+      handlers: [stderr]
+      level: INFO
+    __main__:
+      handlers: [stderr]
+      level: INFO
